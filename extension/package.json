@@ -1,0 +1,31 @@
+{
+  "name": "leetcode-coach-extension",
+  "version": "1.0.0",
+  "description": "Adaptive AST-Based Algorithmic Coach Chrome Extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "web-tree-sitter": "^0.22.6"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.26",
+    "@types/chrome": "^0.0.268",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "vite": "^5.4.8",
+    "vite-plugin-static-copy": "^1.0.6"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
