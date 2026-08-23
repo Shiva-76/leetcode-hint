@@ -10,6 +10,7 @@ langgraph
 langchain-core
 langchain-anthropic
 langchain-openai
+langchain-google-genai
 fastembed
 pydantic>=2.13.4
 pydantic-settings>=2.15.0

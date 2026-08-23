@@ -26,9 +26,10 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
 
     # LLM
-    llm_provider: str = "stub"   # "stub" | "anthropic" | "openai"
+    llm_provider: str = "stub"   # "stub" | "anthropic" | "openai" | "google"
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    google_api_key: str = ""
 
     # Database (SQLite for dev, PostgreSQL for prod)
     database_url: str = "sqlite+aiosqlite:///./coach.db"

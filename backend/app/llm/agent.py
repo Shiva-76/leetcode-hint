@@ -7,6 +7,7 @@ import json
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 
 from app.config import settings
@@ -28,13 +29,17 @@ def get_llm():
     if settings.llm_provider == "stub":
         from langchain_core.language_models import FakeListChatModel
         return FakeListChatModel(responses=["This is a stub Socratic hint based on your AST."])
+    if settings.llm_provider == "google" and settings.google_api_key:
+        return ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=settings.google_api_key)
     if settings.llm_provider == "anthropic" and settings.anthropic_api_key:
         return ChatAnthropic(model="claude-3-5-sonnet-latest", api_key=settings.anthropic_api_key)
     elif settings.llm_provider == "openai" and settings.openai_api_key:
         return ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key)
     else:
-        # Fallback to OpenAI if key is present, otherwise Anthropic, else raise error
-        if settings.openai_api_key:
+        # Fallback
+        if settings.google_api_key:
+             return ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=settings.google_api_key)
+        elif settings.openai_api_key:
              return ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key)
         elif settings.anthropic_api_key:
              return ChatAnthropic(model="claude-3-5-sonnet-latest", api_key=settings.anthropic_api_key)
