@@ -89,10 +89,12 @@ The coach:
 │  └─────────────┘  └────────────────┘  └─────────────────┘  │
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  LangGraph Agent (Phase 4)                           │  │
-│  │  • HINT node → Socratic hint generator               │  │
-│  │  • UPGRADE node → Code evaluator                     │  │
-│  │  • Claude 3.5 Sonnet / GPT-4o (configurable)        │  │
+│  │ LangGraph AI Agent (Phase 4)                         │  │
+│  │ - Framework: LangGraph + LangChain.                  │  │
+│  │ - Embeddings: fastembed (BAAI/bge-small-en-v1.5).    │  │
+│  │ - Nodes: retrieve_context, generate_hint,            │  │
+│  │   evaluate_upgrade.                                  │  │
+│  │ - Provider: Agnostic (Claude 3.5 Sonnet / GPT-4o).   │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -278,7 +280,6 @@ const astSummary = {
 The panel is draggable (mouse drag on header), collapsible (collapse button), and has:
 
 - **StrategyDropdown** — pick Brute Force / Better / Optimal tier
-  - Previously showed hardcoded O(N²)/O(N log N)/O(N) — **removed** (every problem is different; real complexity comes from DB in Phase 3)
 - **HintButtons** — L1, L2, L3 with progressive unlock (must request L1 before L2, etc.)
 - **UpgradeButton** — evaluates code against next tier
 - **ResponseDisplay** — renders streaming markdown with a skeleton shimmer while loading
@@ -653,11 +654,11 @@ $env:PYTHONUTF8 = "1"
 
 | Phase | What | Key Technologies |
 |---|---|---|
-| ✅ Phase 1 | Chrome Extension + AST Parser | React, CRXJS, web-tree-sitter WASM |
-| ✅ Phase 2 | FastAPI WebSocket Gateway | FastAPI, Pydantic v2, Redis/MemoryStore |
-| ✅ Phase 3 | Database & Vector Search | SQLite/PostgreSQL, SQLAlchemy async, Qdrant |
-| 🔜 Phase 4 | LangGraph AI Agent | LangGraph, LangChain, Claude/GPT-4o |
-| 🔜 Phase 5 | Streaming E2E + Polish | Full integration, auth, production config |
+| - [x] | **Phase 1**: Chrome Extension setup (Shadow DOM, React, WebSocket client, AST basic setup) | React, CRXJS, web-tree-sitter WASM |
+| - [x] | **Phase 2**: Python backend skeleton (FastAPI, WebSockets, Rate limiting, Redis-lite) | FastAPI, Pydantic v2, Redis/MemoryStore |
+| - [x] | **Phase 3**: DB & Vector Store (PostgreSQL/SQLite, ORM, Qdrant setup) | SQLAlchemy, Qdrant |
+| - [x] | **Phase 4**: LangGraph Agent (Socratic prompts, Claude/OpenAI wiring) | LangGraph, LangChain, Claude/GPT-4o |
+| - [ ] | **Phase 5**: Polish, Auth, and final E2E testing | Full integration, auth, production config |
 
 ---
 
