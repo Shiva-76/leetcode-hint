@@ -1,38 +1,48 @@
 /**
- * wsClient.js — WebSocket client stub (Phase 1 skeleton)
+ * wsClient.js — WebSocket client (Phase 2: full bidirectional streaming)
  *
- * In Phase 2 this module will establish a persistent WebSocket connection
- * to the FastAPI backend and handle bidirectional streaming.
- *
- * For Phase 1 it provides the interface so the UI can wire up event handlers
- * without needing a live backend.
+ * Features:
+ * - Auto-reconnect with exponential backoff (1s → 2s → 4s → max 30s)
+ * - Handles TOKEN / DONE / CACHE_HIT / ERROR / RATE_LIMIT messages
+ * - Exposes a clean API: connect, sendPayload, onMessage, onStatusChange
  */
 
 const WS_URL = 'ws://localhost:8000/ws/coach';
 
-let _socket = null;
-let _onMessage = null;
+const RECONNECT_BASE_MS  = 1000;
+const RECONNECT_MAX_MS   = 30000;
+const RECONNECT_FACTOR   = 2;
+
+let _socket         = null;
+let _onMessage      = null;
 let _onStatusChange = null;
+let _reconnectDelay = RECONNECT_BASE_MS;
+let _reconnecting   = false;
+let _intentionalClose = false;
 
 /** @type {'disconnected' | 'connecting' | 'connected' | 'error'} */
 export let connectionStatus = 'disconnected';
 
+// ── Connection lifecycle ──────────────────────────────────────────────────────
+
 /**
  * Connect to the backend WebSocket.
- * Silently retries on failure (Phase 2 will add exponential backoff).
+ * Safe to call multiple times — ignores if already connected.
  */
 export function connect() {
-  if (_socket && _socket.readyState === WebSocket.OPEN) return;
+  if (_socket && (_socket.readyState === WebSocket.OPEN ||
+                  _socket.readyState === WebSocket.CONNECTING)) return;
 
-  connectionStatus = 'connecting';
-  _onStatusChange?.(connectionStatus);
+  _intentionalClose = false;
+  _setStatus('connecting');
 
   try {
     _socket = new WebSocket(WS_URL);
 
     _socket.onopen = () => {
-      connectionStatus = 'connected';
-      _onStatusChange?.(connectionStatus);
+      _reconnectDelay = RECONNECT_BASE_MS; // reset backoff on success
+      _reconnecting   = false;
+      _setStatus('connected');
       console.log('[wsClient] Connected to backend.');
     };
 
@@ -41,42 +51,63 @@ export function connect() {
         const data = JSON.parse(event.data);
         _onMessage?.(data);
       } catch {
-        // Raw text token (streaming chunk) — pass through as-is
+        // Shouldn't happen — all messages are JSON
         _onMessage?.({ type: 'TOKEN', token: event.data });
       }
     };
 
     _socket.onerror = () => {
-      connectionStatus = 'error';
-      _onStatusChange?.(connectionStatus);
+      _setStatus('error');
     };
 
     _socket.onclose = () => {
-      connectionStatus = 'disconnected';
-      _onStatusChange?.(connectionStatus);
-      console.log('[wsClient] Disconnected.');
+      _setStatus('disconnected');
+      if (!_intentionalClose) {
+        _scheduleReconnect();
+      }
     };
+
   } catch (err) {
-    connectionStatus = 'error';
-    _onStatusChange?.(connectionStatus);
-    console.warn('[wsClient] Connection failed (backend not running):', err.message);
+    _setStatus('error');
+    console.warn('[wsClient] Connection failed:', err.message);
+    _scheduleReconnect();
   }
 }
 
+function _scheduleReconnect() {
+  if (_reconnecting || _intentionalClose) return;
+  _reconnecting = true;
+  console.log(`[wsClient] Reconnecting in ${_reconnectDelay / 1000}s...`);
+  setTimeout(() => {
+    _reconnecting = false;
+    connect();
+  }, _reconnectDelay);
+  // Exponential backoff
+  _reconnectDelay = Math.min(_reconnectDelay * RECONNECT_FACTOR, RECONNECT_MAX_MS);
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
 /**
- * Send a payload to the backend.
- * @param {object} payload
+ * Send a CoachRequest payload to the backend.
+ * @param {object} payload — must conform to CoachRequest schema
  */
 export function sendPayload(payload) {
   if (!_socket || _socket.readyState !== WebSocket.OPEN) {
-    console.warn('[wsClient] Socket not open. Payload dropped:', payload);
+    console.warn('[wsClient] Socket not open. Queuing not implemented — payload dropped:', payload);
+    // Notify UI of the dropped payload
+    _onMessage?.({
+      type: 'ERROR',
+      message: 'Not connected to backend. Please wait for reconnection.',
+    });
     return;
   }
   _socket.send(JSON.stringify(payload));
 }
 
 /**
- * Register a callback for incoming messages.
+ * Register handler for incoming messages.
+ * Called with: { type: 'TOKEN'|'DONE'|'CACHE_HIT'|'ERROR'|'RATE_LIMIT', ... }
  * @param {function(object): void} cb
  */
 export function onMessage(cb) {
@@ -84,13 +115,22 @@ export function onMessage(cb) {
 }
 
 /**
- * Register a callback for connection status changes.
- * @param {function(string): void} cb
+ * Register handler for connection status changes.
+ * @param {function('disconnected'|'connecting'|'connected'|'error'): void} cb
  */
 export function onStatusChange(cb) {
   _onStatusChange = cb;
 }
 
+/** Intentionally close the connection (disables auto-reconnect). */
 export function disconnect() {
+  _intentionalClose = true;
   _socket?.close();
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+function _setStatus(status) {
+  connectionStatus = status;
+  _onStatusChange?.(status);
 }

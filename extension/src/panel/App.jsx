@@ -45,9 +45,15 @@ export default function App({ mountEl }) {
         setResponse((prev) => prev + data.token);
       } else if (data.type === 'DONE') {
         setIsLoading(false);
+      } else if (data.type === 'CACHE_HIT') {
+        // Prepend a subtle cache indicator — will be followed by TOKEN stream
+        setResponse('⚡ _Cached response_ \n\n');
+      } else if (data.type === 'RATE_LIMIT') {
+        setIsLoading(false);
+        setResponse(`\n\n_⏳ Rate limit reached. Try again in ${data.retry_after}s._`);
       } else if (data.type === 'ERROR') {
         setIsLoading(false);
-        setResponse((prev) => prev + '\n\n_⚠️ Backend error: ' + data.message + '_');
+        setResponse((prev) => prev + '\n\n_⚠️ ' + data.message + '_');
       }
     };
     // Reset all state when user navigates to a new LeetCode problem
