@@ -9,9 +9,7 @@ The hash captures:
   - ast.loop_depth (structural complexity class of the code)
   - ast.node_count (rough size of the code)
 
-We intentionally EXCLUDE raw code text so that cosmetically different
-code that has the same structure (renamed vars, extra blank lines) still
-gets a cache hit.
+We explicitly include raw code text so that any logical change properly bursts the cache and triggers a new LLM evaluation.
 """
 import hashlib
 import json
@@ -29,6 +27,7 @@ def compute_request_hash(req: CoachRequest) -> str:
         "action":     req.action,
         "hint_level": req.hint_level,
         "tier":       req.selected_tier,
+        "code":       req.code.strip() if req.code else "",
         "loop_depth": req.ast_summary.loop_depth if req.ast_summary else 0,
         "node_count": req.ast_summary.node_count if req.ast_summary else 0,
     }
