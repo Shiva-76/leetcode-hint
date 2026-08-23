@@ -32,10 +32,10 @@ from app.websocket.manager import manager
 from app.cache.ast_cache import get_cached_hint, set_cached_hint
 from app.rate_limit.limiter import check_rate_limit
 from app.utils.hashing import compute_request_hash
-from app.llm.stub_streamer import stream_stub_response
 from app.db.database import AsyncSessionLocal
 from app.db.crud import get_problem_by_slug, get_complexity_for_tier
 from app.vector.qdrant_store import store_hint, search_similar_hints
+from app.llm.agent import stream_agent_response
 
 router = APIRouter()
 
@@ -122,9 +122,9 @@ async def coach_websocket(websocket: WebSocket):
                     },
                 })
 
-            # ── 6. Stream from LLM/stub ──────────────────────────────────────
+            # ── 6. Stream from LangGraph Agent ───────────────────────────────
             full_parts: list[str] = []
-            async for token in stream_stub_response(req, context=ctx):
+            async for token in stream_agent_response(req, context=ctx):
                 await websocket.send_json({"type": "TOKEN", "token": token})
                 full_parts.append(token)
 

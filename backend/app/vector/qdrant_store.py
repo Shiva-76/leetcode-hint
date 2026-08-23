@@ -10,9 +10,9 @@ Payload:  { problem_slug, tier, hint_level, text }
 """
 from __future__ import annotations
 import hashlib
-import struct
 from typing import Any
 
+from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -26,9 +26,10 @@ from qdrant_client.models import (
 from app.config import settings
 
 COLLECTION  = "coach_hints"
-VECTOR_SIZE = 128   # Phase 4 will raise this to match the real embedding model
+VECTOR_SIZE = 384   # fastembed BAAI/bge-small-en-v1.5 vector size
 
 _client: QdrantClient | None = None
+_embedder: TextEmbedding | None = None
 
 
 def get_qdrant() -> QdrantClient:
@@ -56,7 +57,13 @@ def init_qdrant() -> None:
             vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
         )
 
-    print(f"[Qdrant] Ready  ({mode})")
+    # Initialize FastEmbed
+    global _embedder
+    _embedder = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    # Load model into memory
+    list(_embedder.embed(["warmup"]))
+
+    print(f"[Qdrant] Ready  ({mode}) + FastEmbed loaded")
 
 
 def close_qdrant() -> None:
@@ -71,17 +78,15 @@ def close_qdrant() -> None:
 
 def _embed(text: str) -> list[float]:
     """
-    Phase 3 stub: deterministic 128-dim vector from SHA-256 rolling hash.
-    Not semantically meaningful — replaced by real model in Phase 4.
+    Phase 4: Real semantic text embedding using FastEmbed (BAAI/bge-small-en-v1.5).
     """
-    digest = hashlib.sha256(text.encode()).digest()
-    # Tile digest bytes to fill 128 floats (each float from 2 bytes)
-    extended = (digest * 8)[:256]   # 256 bytes
-    floats = [
-        struct.unpack("H", extended[i*2:(i*2)+2])[0] / 65535.0
-        for i in range(VECTOR_SIZE)
-    ]
-    return floats
+    global _embedder
+    if _embedder is None:
+        raise RuntimeError("FastEmbed not initialized. Call init_qdrant() first.")
+    
+    # embed() returns a generator of numpy arrays, we want the first one as a list of floats
+    result = list(_embedder.embed([text]))[0]
+    return result.tolist()
 
 
 # ── Store / Retrieve ──────────────────────────────────────────────────────────
