@@ -135,9 +135,9 @@ def search_similar_hints(
             must=[FieldCondition(key="problem_slug", match=MatchValue(value=problem_slug))]
         )
 
-    results = client.search(
+    response = client.query_points(
         collection_name=COLLECTION,
-        query_vector=_embed(query_text),
+        query=_embed(query_text),
         query_filter=query_filter,
         limit=limit,
         with_payload=True,
@@ -150,5 +150,5 @@ def search_similar_hints(
             "tier":  hit.payload.get("tier", ""),
             "hint_level": hit.payload.get("hint_level"),
         }
-        for hit in results
+        for hit in response.points
     ]
