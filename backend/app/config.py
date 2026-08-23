@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 
+    # Database (SQLite for dev, PostgreSQL for prod)
+    database_url: str = "sqlite+aiosqlite:///./coach.db"
+
+    # Qdrant vector DB (empty = in-memory, no server needed)
+    qdrant_url: str = ""
+
 
 # Singleton — import this everywhere
 settings = Settings()

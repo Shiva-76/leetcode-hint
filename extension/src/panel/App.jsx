@@ -28,6 +28,7 @@ export default function App({ mountEl }) {
   const [wsStatus, setWsStatus]             = useState('disconnected');
   const [astSummary, setAstSummary]         = useState(null);
   const [slug, setSlug]                     = useState(null);
+  const [problemData, setProblemData]       = useState(null);  // Phase 3: from DB
 
   // ── Listen for CustomEvents from content script ────────────────────────────
   useEffect(() => {
@@ -46,8 +47,19 @@ export default function App({ mountEl }) {
       } else if (data.type === 'DONE') {
         setIsLoading(false);
       } else if (data.type === 'CACHE_HIT') {
-        // Prepend a subtle cache indicator — will be followed by TOKEN stream
         setResponse('⚡ _Cached response_ \n\n');
+      } else if (data.type === 'PROBLEM_CTX') {
+        // Phase 3: backend confirmed real complexity targets
+        // Update problemData with live tier info from DB
+        setProblemData((prev) => ({
+          ...prev,
+          title: data.title,
+          difficulty: data.difficulty,
+          complexity_targets: {
+            ...(prev?.complexity_targets ?? {}),
+            [data.tier_info?.tier]: data.tier_info,
+          },
+        }));
       } else if (data.type === 'RATE_LIMIT') {
         setIsLoading(false);
         setResponse(`\n\n_⏳ Rate limit reached. Try again in ${data.retry_after}s._`);
@@ -67,6 +79,12 @@ export default function App({ mountEl }) {
       setResponse('');
       setIsLoading(false);
       setAstSummary(null);
+      setProblemData(null);
+      // Phase 3: fetch problem metadata from backend DB
+      fetch(`http://localhost:8000/api/problems/${newSlug}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data) setProblemData(data); })
+        .catch(() => {});
       console.log(`[LCCoach] Panel reset for new problem: ${newSlug}`);
     };
 
@@ -83,11 +101,22 @@ export default function App({ mountEl }) {
     };
   }, [mountEl]);
 
-  // Get slug from URL on mount
+  // Get slug from URL on mount + fetch problem data
   useEffect(() => {
     const match = window.location.pathname.match(/\/problems\/([^/]+)/);
-    if (match) setSlug(match[1]);
+    if (match) {
+      setSlug(match[1]);
+      fetch(`http://localhost:8000/api/problems/${match[1]}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data) setProblemData(data); })
+        .catch(() => {});
+    }
   }, []);
+
+  // Compute complexity hint for current strategy from DB data
+  const complexityHint = strategy && problemData?.complexity_targets?.[strategy]
+    ? `${problemData.complexity_targets[strategy].time_complexity} · ${problemData.complexity_targets[strategy].approach_name}`
+    : null;
 
   // ── Drag logic ─────────────────────────────────────────────────────────────
   const onMouseDown = useCallback((e) => {
@@ -212,8 +241,12 @@ export default function App({ mountEl }) {
         {!collapsed && (
           <div className="lc-p-4 lc-flex lc-flex-col lc-gap-4">
 
-            {/* Strategy Dropdown */}
-            <StrategyDropdown value={strategy} onChange={handleStrategyChange} />
+            {/* Strategy Dropdown — Phase 3: shows real complexity from DB */}
+            <StrategyDropdown
+              value={strategy}
+              onChange={handleStrategyChange}
+              complexityHint={complexityHint}
+            />
 
             {/* Divider */}
             <div className="lc-border-t lc-border-coach-border" />

@@ -655,11 +655,18 @@ $env:PYTHONUTF8 = "1"
 |---|---|---|
 | ✅ Phase 1 | Chrome Extension + AST Parser | React, CRXJS, web-tree-sitter WASM |
 | ✅ Phase 2 | FastAPI WebSocket Gateway | FastAPI, Pydantic v2, Redis/MemoryStore |
-| 🔜 Phase 3 | Database layer | PostgreSQL (SQLAlchemy async), Qdrant vector DB |
+| ✅ Phase 3 | Database & Vector Search | SQLite/PostgreSQL, SQLAlchemy async, Qdrant |
 | 🔜 Phase 4 | LangGraph AI Agent | LangGraph, LangChain, Claude/GPT-4o |
 | 🔜 Phase 5 | Streaming E2E + Polish | Full integration, auth, production config |
 
-**Phase 3 will add:**
-- `PostgreSQL` table for each LeetCode problem: title, difficulty, complexity targets per tier (this replaces the hardcoded strategy labels)
-- `Qdrant` vector database: embed hint texts so similar structural problems get semantically relevant hints
-- The `StrategyDropdown` will show real complexity (e.g. `O(log(min(N,M)))` for Median of Two Sorted Arrays)
+---
+
+## Phase 3 — Database & Vector Search
+
+### What we built
+- **Database Layer**: SQLAlchemy asynchronous configuration with fallback (`SQLite` by default, easily swapped to `PostgreSQL`).
+- **Models & CRUD**: Designed `Problem` and `ComplexityTarget` models to link 1-to-many complexity targets for each problem tier (Brute Force, Better, Optimal).
+- **Qdrant Vector Store**: Embedded a lightweight, in-memory instance of `Qdrant` into the FastAPI startup to cache hints deterministically based on SHA-256 (will serve semantic similarity in Phase 4).
+- **Data Seeding**: Written a robust `seed.py` that populates 54 popular LeetCode questions containing accurate time/space complexities alongside approach names.
+- **WebSocket Context Hook**: The WebSocket router was augmented to pull the exact problem metadata and complexity target directly from the DB at runtime, embedding it in the Socratic Hint prefix.
+- **Extension Update**: Updated `App.jsx` and `StrategyDropdown.jsx` to dynamically hit the new `/api/problems/{slug}` endpoint to show real-time complexity tags per strategy.

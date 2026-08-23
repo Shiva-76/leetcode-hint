@@ -69,31 +69,51 @@ STUB_UPGRADE: dict[str, str] = {
 }
 
 
-async def stream_stub_response(req: CoachRequest) -> AsyncGenerator[str, None]:
+async def stream_stub_response(
+    req: CoachRequest,
+    context: dict | None = None,
+) -> AsyncGenerator[str, None]:
     """
-    Yield tokens from a stub response with realistic streaming delays.
-    Simulates an LLM streaming ~4 tokens/second.
+    Yield tokens from a stub response.
+    context — problem metadata from DB (title, tier, complexity targets).
     """
+    problem_name = context["title"] if context else req.problem_slug.replace("-", " ").title()
+    tier_label   = (context["approach_name"] or "") if context else ""
+    time_cx      = context["time_complexity"]  if context else "?"
+    space_cx     = context["space_complexity"] if context else "?"
+
     if req.action == "HINT" and req.hint_level is not None:
-        text = STUB_HINTS.get(("HINT", req.hint_level), _fallback_hint(req))
+        base = STUB_HINTS.get(("HINT", req.hint_level), _fallback_hint(req, problem_name))
+        # Prepend a problem-specific line when we have real DB context
+        if context and req.hint_level == 1:
+            base = (
+                f"For **{problem_name}**, the target approach is **{tier_label}** "
+                f"({time_cx} time, {space_cx} space).\n\n" + base
+            )
+        text = base
     elif req.action == "UPGRADE":
         tier = req.selected_tier or "BRUTE_FORCE"
-        text = STUB_UPGRADE.get(tier, STUB_UPGRADE["BRUTE_FORCE"])
+        base = STUB_UPGRADE.get(tier, STUB_UPGRADE["BRUTE_FORCE"])
+        if context:
+            base = (
+                f"**{problem_name}** — current tier: **{tier.replace('_', ' ').title()}**\n"
+                f"Target: **{tier_label}** | {time_cx} time | {space_cx} space\n\n" + base
+            )
+        text = base
     else:
         text = "Please select a strategy and try again."
 
-    # Stream word by word with a slight delay to simulate LLM tokens
     words = text.split(" ")
     for i, word in enumerate(words):
         token = word if i == len(words) - 1 else word + " "
         yield token
-        # ~40-60ms per token → natural reading speed
         await asyncio.sleep(0.05)
 
 
-def _fallback_hint(req: CoachRequest) -> str:
+def _fallback_hint(req: CoachRequest, problem_name: str = "") -> str:
+    name = problem_name or req.problem_slug.replace("-", " ").title()
     return (
-        f"Think carefully about your approach for **{req.problem_slug}**. "
+        f"Think carefully about your approach for **{name}**. "
         "What is the bottleneck in your current solution? "
         "Can you eliminate redundant work?"
     )
