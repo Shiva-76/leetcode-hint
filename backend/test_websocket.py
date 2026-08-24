@@ -12,13 +12,15 @@ HINT_PAYLOAD = {
     "problem_slug": "two-sum", "action": "HINT", "hint_level": 1,
     "selected_tier": "OPTIMAL",
     "ast_summary": {"nodeCount": 47, "loopDepth": 2, "hasNestedLoops": True},
-    "code_text": "def twoSum(self, nums, target): pass"
+    "code_text": "def twoSum(self, nums, target): pass",
+    "auth_token": "my-secret-token"
 }
 UPGRADE_PAYLOAD = {
     "problem_slug": "two-sum", "action": "UPGRADE", "hint_level": None,
     "selected_tier": "BRUTE_FORCE",
     "ast_summary": {"nodeCount": 47, "loopDepth": 2, "hasNestedLoops": True},
-    "code_text": "def twoSum(self, nums, target): pass"
+    "code_text": "def twoSum(self, nums, target): pass",
+    "auth_token": "my-secret-token"
 }
 INVALID_PAYLOAD = {"totally": "wrong"}
 
@@ -90,6 +92,16 @@ async def test_invalid():
     types = [m["type"] for m in msgs]
     check("ERROR returned",      "ERROR" in types)
 
+async def test_unauthorized():
+    print("\n[6] Unauthorized -> ERROR")
+    bad_payload = {**HINT_PAYLOAD, "auth_token": "wrong"}
+    msgs = await collect(bad_payload)
+    types = [m["type"] for m in msgs]
+    check("ERROR returned", "ERROR" in types)
+    if "ERROR" in types:
+        msg = next(m for m in msgs if m["type"] == "ERROR")
+        check("Unauthorized message", "Unauthorized" in msg.get("message", ""))
+
 async def main():
     print("=" * 52)
     print("  Phase 2 E2E WebSocket Test")
@@ -100,6 +112,7 @@ async def main():
     await test_cache()
     await test_upgrade()
     await test_invalid()
+    await test_unauthorized()
     passed = sum(results); total = len(results)
     print(f"\n{'='*52}")
     print(f"  {passed}/{total} checks passed" + (" -- ALL GOOD!" if passed == total else " -- SOME FAILED"))

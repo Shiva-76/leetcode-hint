@@ -30,7 +30,7 @@ def get_llm():
         from langchain_core.language_models import FakeListChatModel
         return FakeListChatModel(responses=["This is a stub Socratic hint based on your AST."])
     if settings.llm_provider == "google" and settings.google_api_key:
-        return ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=settings.google_api_key)
+        return ChatGoogleGenerativeAI(model="gemini-3.6-flash", google_api_key=settings.google_api_key)
     if settings.llm_provider == "anthropic" and settings.anthropic_api_key:
         return ChatAnthropic(model="claude-3-5-sonnet-latest", api_key=settings.anthropic_api_key)
     elif settings.llm_provider == "openai" and settings.openai_api_key:
@@ -38,7 +38,7 @@ def get_llm():
     else:
         # Fallback
         if settings.google_api_key:
-             return ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=settings.google_api_key)
+             return ChatGoogleGenerativeAI(model="gemini-3.6-flash", google_api_key=settings.google_api_key)
         elif settings.openai_api_key:
              return ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key)
         elif settings.anthropic_api_key:
@@ -146,4 +146,11 @@ async def stream_agent_response(
         if kind == "on_chat_model_stream":
             content = event["data"]["chunk"].content
             if content:
-                yield content
+                if isinstance(content, list):
+                    for part in content:
+                        if isinstance(part, dict) and "text" in part:
+                            yield part["text"]
+                        elif isinstance(part, str):
+                            yield part
+                elif isinstance(content, str):
+                    yield content

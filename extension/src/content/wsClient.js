@@ -19,6 +19,7 @@ let _onStatusChange = null;
 let _reconnectDelay = RECONNECT_BASE_MS;
 let _reconnecting   = false;
 let _intentionalClose = false;
+let _authToken      = '';
 
 /** @type {'disconnected' | 'connecting' | 'connected' | 'error'} */
 export let connectionStatus = 'disconnected';
@@ -36,42 +37,47 @@ export function connect() {
   _intentionalClose = false;
   _setStatus('connecting');
 
-  try {
-    _socket = new WebSocket(WS_URL);
+  chrome.storage.local.get(['backendUrl', 'authToken'], (res) => {
+    const url = res.backendUrl || 'ws://localhost:8000/ws/coach';
+    _authToken = res.authToken || '';
 
-    _socket.onopen = () => {
-      _reconnectDelay = RECONNECT_BASE_MS; // reset backoff on success
-      _reconnecting   = false;
-      _setStatus('connected');
-      console.log('[wsClient] Connected to backend.');
-    };
+    try {
+      _socket = new WebSocket(url);
 
-    _socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        _onMessage?.(data);
-      } catch {
-        // Shouldn't happen — all messages are JSON
-        _onMessage?.({ type: 'TOKEN', token: event.data });
-      }
-    };
+      _socket.onopen = () => {
+        _reconnectDelay = RECONNECT_BASE_MS; // reset backoff on success
+        _reconnecting   = false;
+        _setStatus('connected');
+        console.log(`[wsClient] Connected to backend at ${url}`);
+      };
 
-    _socket.onerror = () => {
+      _socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          _onMessage?.(data);
+        } catch {
+          // Shouldn't happen — all messages are JSON
+          _onMessage?.({ type: 'TOKEN', token: event.data });
+        }
+      };
+
+      _socket.onerror = () => {
+        _setStatus('error');
+      };
+
+      _socket.onclose = () => {
+        _setStatus('disconnected');
+        if (!_intentionalClose) {
+          _scheduleReconnect();
+        }
+      };
+
+    } catch (err) {
       _setStatus('error');
-    };
-
-    _socket.onclose = () => {
-      _setStatus('disconnected');
-      if (!_intentionalClose) {
-        _scheduleReconnect();
-      }
-    };
-
-  } catch (err) {
-    _setStatus('error');
-    console.warn('[wsClient] Connection failed:', err.message);
-    _scheduleReconnect();
-  }
+      console.warn('[wsClient] Connection failed:', err.message);
+      _scheduleReconnect();
+    }
+  });
 }
 
 function _scheduleReconnect() {
@@ -98,11 +104,14 @@ export function sendPayload(payload) {
     // Notify UI of the dropped payload
     _onMessage?.({
       type: 'ERROR',
-      message: 'Not connected to backend. Please wait for reconnection.',
+      message: 'Backend offline. Please start the server or configure the correct URL in Options.',
     });
     return;
   }
-  _socket.send(JSON.stringify(payload));
+  
+  // Attach auth token if available
+  const finalPayload = { ...payload, auth_token: _authToken };
+  _socket.send(JSON.stringify(finalPayload));
 }
 
 /**

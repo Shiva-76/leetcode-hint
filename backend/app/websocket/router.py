@@ -27,6 +27,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+
 from app.schemas import CoachRequest
 from app.websocket.manager import manager
 from app.cache.ast_cache import get_cached_hint, set_cached_hint
@@ -81,6 +83,14 @@ async def coach_websocket(websocket: WebSocket):
                 req = CoachRequest(**json.loads(raw))
             except (json.JSONDecodeError, ValidationError) as exc:
                 await websocket.send_json({"type": "ERROR", "message": str(exc)})
+                continue
+
+            # ── 1.5. Authentication ──────────────────────────────────────────
+            if settings.server_auth_token and req.auth_token != settings.server_auth_token:
+                await websocket.send_json({
+                    "type": "ERROR",
+                    "message": "Unauthorized: Invalid or missing auth token."
+                })
                 continue
 
             # ── 2. Rate limit ────────────────────────────────────────────────

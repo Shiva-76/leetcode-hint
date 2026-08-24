@@ -671,3 +671,18 @@ $env:PYTHONUTF8 = "1"
 - **Data Seeding**: Written a robust `seed.py` that populates 54 popular LeetCode questions containing accurate time/space complexities alongside approach names.
 - **WebSocket Context Hook**: The WebSocket router was augmented to pull the exact problem metadata and complexity target directly from the DB at runtime, embedding it in the Socratic Hint prefix.
 - **Extension Update**: Updated `App.jsx` and `StrategyDropdown.jsx` to dynamically hit the new `/api/problems/{slug}` endpoint to show real-time complexity tags per strategy.
+
+---
+
+## Phase 4 — LangGraph AI Agent
+
+### What we built
+- **LangGraph State Machine**: Replaced the static `stub_streamer` with a fully dynamic, stateful AI agent graph (`agent.py`) built on LangGraph.
+- **Provider-Agnostic LLM Configuration**: Integrated `langchain-google-genai`, `langchain-anthropic`, and `langchain-openai`. The backend dynamically instantiates the correct ChatModel (e.g. `gemini-3.6-flash`, `claude-3-5-sonnet-latest`, `gpt-4o`) based on the `.env` configuration.
+- **Agent Nodes**:
+  - `retrieve_context`: Embeds the user's current code using `fastembed` (BAAI/bge-small-en-v1.5) and retrieves similar past hints from the Qdrant vector database.
+  - `generate_hint`: Processes `HINT` actions by combining the DB's target complexity, the AST `loop_depth`, and similar hints into a Socratic system prompt.
+  - `evaluate_upgrade`: Processes `UPGRADE` actions to provide a strict algorithmic critique of the user's code against the next optimal tier.
+- **Dynamic Streaming**: Utilized LangChain's `astream_events` (v1) to capture real-time chunk streams from the LLM across the graph. We built custom extraction logic to normalize chunk formats (handling both raw strings and chunk list dictionaries outputted by models like Gemini) and yielded them directly to the WebSocket client.
+- **Aggressive Cache Tuning**: Fixed an overly aggressive caching mechanism in `hashing.py` by incorporating the `req.code_text` into the SHA-256 semantic hash, ensuring that any logical changes to the code strictly trigger a fresh LLM evaluation.
+- **System Prompts**: Separated prompt templates into `prompts.py` to maintain a strict Socratic personality, instructing the LLM to guide users via questions without revealing raw solution code.

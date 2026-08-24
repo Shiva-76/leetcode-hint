@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # Qdrant vector DB (empty = in-memory, no server needed)
     qdrant_url: str = ""
 
+    # Authentication for WebSocket
+    server_auth_token: str = ""
+
 
 # Singleton — import this everywhere
 settings = Settings()

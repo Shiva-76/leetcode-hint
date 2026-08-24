@@ -16,3 +16,7 @@ npm-debug.log*
 # Build artifacts
 *.pyc
 __pycache__/
+
+# Secrets and Databases
+.env
+*.db

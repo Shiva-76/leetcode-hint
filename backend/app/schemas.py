@@ -26,6 +26,7 @@ class CoachRequest(BaseModel):
     selected_tier: Optional[Literal["BRUTE_FORCE", "BETTER", "OPTIMAL"]] = None
     ast_summary: Optional[ASTSummary] = None
     code_text: str = ""
+    auth_token: str = ""
 
 
 # ── Outgoing messages (Server → Client) ──────────────────────────────────────

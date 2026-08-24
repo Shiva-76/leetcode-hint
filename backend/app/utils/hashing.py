@@ -27,7 +27,7 @@ def compute_request_hash(req: CoachRequest) -> str:
         "action":     req.action,
         "hint_level": req.hint_level,
         "tier":       req.selected_tier,
-        "code":       req.code.strip() if req.code else "",
+        "code":       req.code_text.strip() if req.code_text else "",
         "loop_depth": req.ast_summary.loop_depth if req.ast_summary else 0,
         "node_count": req.ast_summary.node_count if req.ast_summary else 0,
     }
