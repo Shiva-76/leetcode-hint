@@ -3,12 +3,19 @@
  *
  * Renders streamed markdown tokens from the LangGraph backend.
  * Shows a typing indicator while waiting, then progressively displays content.
+ * Shows 👍 / 👎 feedback buttons after streaming is complete.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
-export default function ResponseDisplay({ content, isLoading, activeAction, activeLevel }) {
+export default function ResponseDisplay({ content, isLoading, activeAction, activeLevel, hintId, backendUrl }) {
   const scrollRef = useRef(null);
+  const [feedback, setFeedback] = useState(null); // null | 'up' | 'down'
+
+  // Reset feedback state whenever a new response starts
+  useEffect(() => {
+    setFeedback(null);
+  }, [hintId]);
 
   // Auto-scroll to bottom as tokens stream in
   useEffect(() => {
@@ -16,6 +23,23 @@ export default function ResponseDisplay({ content, isLoading, activeAction, acti
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [content]);
+
+  const handleFeedback = async (vote) => {
+    if (!hintId || feedback) return; // already voted or no hint yet
+    setFeedback(vote);
+    try {
+      const base = backendUrl
+        ? backendUrl.replace(/^ws/, 'http').replace('/ws/coach', '')
+        : 'http://localhost:8000';
+      await fetch(`${base}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hint_id: hintId, vote }),
+      });
+    } catch (_) {
+      // Non-fatal — feedback is best-effort
+    }
+  };
 
   if (!isLoading && !content) return null;
 
@@ -99,6 +123,37 @@ export default function ResponseDisplay({ content, isLoading, activeAction, acti
           </div>
         )}
       </div>
+
+      {/* ── Feedback buttons (shown only after streaming completes) ── */}
+      {!isLoading && content && hintId && (
+        <div className="lc-flex lc-items-center lc-justify-end lc-gap-2 lc-mt-2">
+          {feedback === null ? (
+            <>
+              <span className="lc-text-xs lc-text-coach-text-muted">Helpful?</span>
+              <button
+                id="lc-feedback-up"
+                onClick={() => handleFeedback('up')}
+                title="Good hint"
+                className="lc-text-base lc-leading-none lc-p-1 lc-rounded lc-transition-colors hover:lc-bg-coach-surface"
+              >
+                👍
+              </button>
+              <button
+                id="lc-feedback-down"
+                onClick={() => handleFeedback('down')}
+                title="Bad hint — remove from memory"
+                className="lc-text-base lc-leading-none lc-p-1 lc-rounded lc-transition-colors hover:lc-bg-coach-surface"
+              >
+                👎
+              </button>
+            </>
+          ) : feedback === 'up' ? (
+            <span className="lc-text-xs lc-text-coach-success">✓ Thanks for the feedback!</span>
+          ) : (
+            <span className="lc-text-xs lc-text-coach-text-muted">🗑 Hint removed from memory.</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -116,3 +171,4 @@ function SkeletonLines() {
     </div>
   );
 }
+

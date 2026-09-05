@@ -24,6 +24,7 @@ from app.db.seed import run_seed
 from app.vector.qdrant_store import init_qdrant, close_qdrant
 from app.websocket.router import router as ws_router
 from app.api.problems import router as problems_router
+from app.api.feedback import router as feedback_router
 
 
 @asynccontextmanager
@@ -61,6 +62,7 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(ws_router)
 app.include_router(problems_router)
+app.include_router(feedback_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

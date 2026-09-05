@@ -147,6 +147,7 @@ async def coach_websocket(websocket: WebSocket):
                     store_hint(
                         point_id=req_hash,
                         text=full_text,
+                        code_context=f"Code:\n{req.code_text}\nAST Nodes: {req.ast_summary.node_count if req.ast_summary else 0}",
                         problem_slug=req.problem_slug,
                         tier=req.selected_tier or "OPTIMAL",
                         hint_level=req.hint_level,
@@ -155,7 +156,7 @@ async def coach_websocket(websocket: WebSocket):
                     pass  # Qdrant store failure is non-fatal
 
             # ── 8. Done ──────────────────────────────────────────────────────
-            await websocket.send_json({"type": "DONE"})
+            await websocket.send_json({"type": "DONE", "hint_id": req_hash})
 
     except WebSocketDisconnect:
         manager.disconnect(conn_id)

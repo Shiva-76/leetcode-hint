@@ -74,6 +74,25 @@ def close_qdrant() -> None:
         print("[Qdrant] Closed.")
 
 
+def delete_hint(point_id: str) -> bool:
+    """
+    Delete a hint vector from Qdrant by its point_id (SHA-256 req_hash).
+    Returns True if successfully deleted, False otherwise.
+    """
+    client = get_qdrant()
+    try:
+        numeric_id = int(point_id[:15], 16)
+        client.delete(
+            collection_name=COLLECTION,
+            points_selector=[numeric_id],
+        )
+        print(f"[Qdrant] Deleted hint {point_id[:8]}...")
+        return True
+    except Exception as exc:
+        print(f"[Qdrant] Delete failed for {point_id[:8]}: {exc}")
+        return False
+
+
 # ── Embedding ─────────────────────────────────────────────────────────────────
 
 def _embed(text: str) -> list[float]:
@@ -94,6 +113,7 @@ def _embed(text: str) -> list[float]:
 def store_hint(
     point_id: str,
     text: str,
+    code_context: str,
     problem_slug: str,
     tier: str,
     hint_level: int | None,
@@ -111,7 +131,7 @@ def store_hint(
         points=[
             PointStruct(
                 id=numeric_id,
-                vector=_embed(text),
+                vector=_embed(code_context),
                 payload={
                     "problem_slug": problem_slug,
                     "tier": tier,

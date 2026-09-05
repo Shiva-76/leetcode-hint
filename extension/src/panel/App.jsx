@@ -29,6 +29,8 @@ export default function App({ mountEl }) {
   const [astSummary, setAstSummary]         = useState(null);
   const [slug, setSlug]                     = useState(null);
   const [problemData, setProblemData]       = useState(null);  // Phase 3: from DB
+  const [hintId, setHintId]                = useState(null);  // SHA-256 hash for feedback
+  const [backendUrl, setBackendUrl]         = useState('');    // read from chrome.storage
 
   // ── Listen for CustomEvents from content script ────────────────────────────
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function App({ mountEl }) {
         setResponse((prev) => prev + data.token);
       } else if (data.type === 'DONE') {
         setIsLoading(false);
+        if (data.hint_id) setHintId(data.hint_id);
       } else if (data.type === 'CACHE_HIT') {
         setResponse('⚡ _Cached response_ \n\n');
       } else if (data.type === 'PROBLEM_CTX') {
@@ -80,6 +83,7 @@ export default function App({ mountEl }) {
       setIsLoading(false);
       setAstSummary(null);
       setProblemData(null);
+      setHintId(null);
       // Phase 3: fetch problem metadata from backend DB
       fetch(`http://localhost:8000/api/problems/${newSlug}`)
         .then((r) => r.ok ? r.json() : null)
@@ -157,6 +161,7 @@ export default function App({ mountEl }) {
     setActiveAction('HINT');
     setResponse('');
     setIsLoading(true);
+    setHintId(null);
     if (level > maxUnlockedLevel) setMaxUnlocked(level);
     sendPayload(buildPayload('HINT', level));
   };
@@ -166,6 +171,7 @@ export default function App({ mountEl }) {
     setActiveLevel(null);
     setResponse('');
     setIsLoading(true);
+    setHintId(null);
     sendPayload(buildPayload('UPGRADE'));
   };
 
@@ -274,6 +280,8 @@ export default function App({ mountEl }) {
               isLoading={isLoading}
               activeAction={activeAction}
               activeLevel={activeLevel}
+              hintId={hintId}
+              backendUrl={backendUrl}
             />
 
             {/* Footer */}

@@ -54,3 +54,10 @@ class RateLimitMessage(BaseModel):
     type: Literal["RATE_LIMIT"] = "RATE_LIMIT"
     message: str = "Rate limit exceeded. Please wait before sending another request."
     retry_after: int = 60
+
+
+# ── Feedback (Client → Server via REST) ──────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    hint_id: str                        # SHA-256 req_hash returned in DONE message
+    vote: Literal["up", "down"]         # "up" = keep, "down" = delete from Qdrant
